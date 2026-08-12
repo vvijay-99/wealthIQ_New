@@ -32,11 +32,39 @@ import {
 } from '@/lib/mock-data';
 import { formatCurrency, formatPercent, formatNumber } from '@/lib/format';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { listRecords, sumBy, toNumber, type FinancialRecord } from '@/lib/financial-data';
+import type { HealthCategory, RiskLevel, Recommendation } from '@/lib/types';
 
 export default function DashboardPage() {
-  const score = MOCK_SCORE;
-  const features = MOCK_FEATURES;
-  const recs = MOCK_RECOMMENDATIONS.slice(0, 3);
+  const [records, setRecords] = useState<Record<string, FinancialRecord[]>>({});
+  useEffect(() => {
+    void Promise.all(['income_records', 'expense_records', 'savings_records', 'debts', 'investments', 'fixed_deposits'].map(async (table) => [table, await listRecords(table as never)] as const)).then((entries) => setRecords(Object.fromEntries(entries))).catch(() => undefined);
+  }, []);
+  const incomes = records.income_records ?? [];
+  const expenses = records.expense_records ?? [];
+  const savings = records.savings_records ?? [];
+  const debts = records.debts ?? [];
+  const investments = records.investments ?? [];
+  const deposits = records.fixed_deposits ?? [];
+  const monthlyIncome = sumBy(incomes, 'amount');
+  const monthlyExpenses = sumBy(expenses, 'amount');
+  const currentSavings = sumBy(savings, 'amount');
+  const totalDebt = sumBy(debts, 'remaining_balance');
+  const monthlyEmi = sumBy(debts, 'monthly_emi');
+  const investmentValue = sumBy(investments, 'current_value');
+  const fdValue = sumBy(deposits, 'principal');
+  const savingsRate = monthlyIncome ? Math.max(0, (monthlyIncome - monthlyExpenses) / monthlyIncome) : 0;
+  const expenseRatio = monthlyIncome ? monthlyExpenses / monthlyIncome : 0;
+  const debtToIncome = monthlyIncome ? monthlyEmi / monthlyIncome : 0;
+  const essentialExpenses = expenses.filter((record) => record.expense_type === 'essential').reduce((sum, record) => sum + toNumber(record.amount), 0);
+  const emergencyFundMonths = essentialExpenses ? sumBy(savings.filter((record) => record.savings_type === 'Emergency Fund'), 'amount') / essentialExpenses : 0;
+  const features = { ...MOCK_FEATURES, monthly_income: monthlyIncome, monthly_expenses: monthlyExpenses, current_savings: currentSavings, total_debt: totalDebt, monthly_emi: monthlyEmi, investment_value: investmentValue, fd_value: fdValue, savings_rate: savingsRate, expense_ratio: expenseRatio, debt_to_income: debtToIncome, emergency_fund_months: emergencyFundMonths, discretionary_expense_ratio: monthlyIncome ? sumBy(expenses.filter((record) => record.expense_type === 'discretionary'), 'amount') / monthlyIncome : 0, net_worth: currentSavings + investmentValue + fdValue - totalDebt };
+  const healthScore = Math.round(Math.max(0, Math.min(100, savingsRate * 50 + (1 - Math.min(expenseRatio, 1)) * 25 + (1 - Math.min(debtToIncome, 1)) * 25)));
+  const healthCategory: HealthCategory = healthScore >= 85 ? 'Excellent' : healthScore >= 70 ? 'Healthy' : healthScore >= 50 ? 'Moderate' : healthScore >= 30 ? 'Weak' : 'Critical';
+  const spendingRisk: RiskLevel = expenseRatio > 0.7 || debtToIncome > 0.5 ? 'High' : expenseRatio > 0.5 ? 'Medium' : 'Low';
+  const score = { health_score: healthScore, health_category: healthCategory, spending_risk: spendingRisk, savings_rate: savingsRate, expense_ratio: expenseRatio, debt_to_income: debtToIncome };
+  const recs: Recommendation[] = [];
 
   return (
     <DashboardLayout>
@@ -68,7 +96,7 @@ export default function DashboardPage() {
           <MetricCard
             title="Health Category"
             value={score.health_category}
-            subtitle="ML Classification"
+            subtitle="Deterministic summary"
             icon={<Sparkles className="h-4 w-4" />}
             accent="primary"
           />
@@ -80,7 +108,7 @@ export default function DashboardPage() {
               <RiskBadge level={score.spending_risk} size="lg" />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              ML-based classification
+              Based on your saved financial records
             </p>
           </div>
           <MetricCard
@@ -257,12 +285,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Mock data notice */}
       <div className="mt-6 rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center">
         <p className="text-xs text-muted-foreground">
-          Phase 1: Displaying clearly marked mock UI data. Financial calculations,
-          ML predictions, and recommendations will be connected to the FastAPI
-          backend in later phases.
+          Dashboard metrics are calculated from your saved Supabase financial records. Forecasts and recommendations remain informational until their dedicated data sources are connected.
         </p>
       </div>
     </DashboardLayout>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,143 +11,55 @@ import { Brain, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth-context';
 
+function authErrorMessage(message: string) {
+  const normalized = message.toLowerCase();
+  if (normalized.includes('email not confirmed')) return 'Please confirm your email before signing in.';
+  if (normalized.includes('rate limit')) return 'Too many attempts. Please try again later.';
+  return 'Invalid email or password.';
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { authState } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Redirect if already authenticated
-  if (authState === 'authenticated') {
-    router.replace('/dashboard');
-  }
+  useEffect(() => {
+    if (authState === 'authenticated') router.replace('/dashboard');
+  }, [authState, router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
     const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      setError(error.message);
+    const email = String(formData.get('email') ?? '').trim().toLowerCase();
+    const password = String(formData.get('password') ?? '');
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) {
+      setError(authErrorMessage(signInError.message));
       setLoading(false);
       return;
     }
-
-    router.push('/dashboard');
+    router.replace('/dashboard');
   };
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
-      {/* Left panel */}
       <div className="relative hidden flex-1 flex-col justify-between bg-sidebar p-12 text-sidebar-foreground lg:flex">
         <div className="absolute inset-0 bg-gradient-to-br from-sidebar-accent/20 to-transparent" />
-        <div className="relative">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-accent">
-              <Brain className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-bold">WealthIQ</span>
-          </Link>
-        </div>
-        <div className="relative space-y-4">
-          <h2 className="text-3xl font-bold leading-tight">
-            Understand your financial health with AI
-          </h2>
-          <p className="text-sidebar-muted">
-            Get a comprehensive Financial Health Score, spending risk
-            classification, forecasts, and personalized recommendations.
-          </p>
-        </div>
-        <div className="relative text-xs text-sidebar-muted">
-          Educational AI Project — Not professional financial advice.
-        </div>
+        <div className="relative"><Link href="/" className="flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-accent"><Brain className="h-5 w-5 text-white" /></div><span className="text-xl font-bold">WealthIQ</span></Link></div>
+        <div className="relative space-y-4"><h2 className="text-3xl font-bold leading-tight">Understand your financial health with AI</h2><p className="text-sidebar-muted">Get a comprehensive Financial Health Score, spending risk classification, forecasts, and personalized recommendations.</p></div>
+        <div className="relative text-xs text-sidebar-muted">Educational AI Project — Not professional financial advice.</div>
       </div>
-
-      {/* Right panel — form */}
-      <div className="flex flex-1 items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-sm">
-          <div className="mb-8 lg:hidden">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                <Brain className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-xl font-bold">WealthIQ</span>
-            </Link>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">Welcome back</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Sign in to access your financial dashboard.
-              </p>
-            </CardHeader>
-            <CardContent>
-              {error && (
-                <div className="mb-4 flex items-start gap-2 rounded-lg border border-danger/20 bg-danger/5 p-3">
-                  <AlertCircle className="h-4 w-4 text-danger shrink-0 mt-0.5" />
-                  <p className="text-sm text-danger">{error}</p>
-                </div>
-              )}
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      className="pl-9"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password</Label>
-                    <button
-                      type="button"
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      placeholder="••••••••"
-                      className="pl-9"
-                      required
-                    />
-                  </div>
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Signing in...' : 'Sign In'}
-                  {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
-                </Button>
-              </form>
-
-              <p className="mt-6 text-center text-sm text-muted-foreground">
-                Don&apos;t have an account?{' '}
-                <Link href="/register" className="font-medium text-primary hover:underline">
-                  Create one
-                </Link>
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <div className="flex flex-1 items-center justify-center p-6 lg:p-12"><div className="w-full max-w-sm">
+        <div className="mb-8 lg:hidden"><Link href="/" className="flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary"><Brain className="h-5 w-5 text-white" /></div><span className="text-xl font-bold">WealthIQ</span></Link></div>
+        <Card><CardHeader><CardTitle className="text-2xl">Welcome back</CardTitle><p className="text-sm text-muted-foreground">Sign in to access your financial dashboard.</p></CardHeader><CardContent>
+          {error && <div role="alert" className="mb-4 flex items-start gap-2 rounded-lg border border-danger/20 bg-danger/5 p-3"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-danger" /><p className="text-sm text-danger">{error}</p></div>}
+          <form onSubmit={handleSubmit} className="space-y-4"><div className="space-y-2"><Label htmlFor="email">Email</Label><div className="relative"><Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="email" name="email" type="email" placeholder="you@example.com" className="pl-9" required /></div></div><div className="space-y-2"><Label htmlFor="password">Password</Label><div className="relative"><Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="password" name="password" type="password" placeholder="••••••••" className="pl-9" required /></div></div><Button type="submit" className="w-full" disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}{!loading && <ArrowRight className="ml-2 h-4 w-4" />}</Button></form>
+          <p className="mt-6 text-center text-sm text-muted-foreground">Don&apos;t have an account? <Link href="/register" className="font-medium text-primary hover:underline">Create one</Link></p>
+        </CardContent></Card>
+      </div></div>
     </div>
   );
 }
