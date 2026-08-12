@@ -34,6 +34,7 @@ import { formatCurrency, formatPercent, formatNumber } from '@/lib/format';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { listRecords, sumBy, toNumber, type FinancialRecord } from '@/lib/financial-data';
+import type { HealthCategory, RiskLevel, Recommendation } from '@/lib/types';
 
 export default function DashboardPage() {
   const [records, setRecords] = useState<Record<string, FinancialRecord[]>>({});
@@ -53,9 +54,17 @@ export default function DashboardPage() {
   const monthlyEmi = sumBy(debts, 'monthly_emi');
   const investmentValue = sumBy(investments, 'current_value');
   const fdValue = sumBy(deposits, 'principal');
-  const features = { ...MOCK_FEATURES, monthly_income: monthlyIncome, monthly_expenses: monthlyExpenses, current_savings: currentSavings, total_debt: totalDebt, monthly_emi: monthlyEmi, investment_value: investmentValue, fd_value: fdValue, savings_rate: monthlyIncome ? Math.max(0, (monthlyIncome - monthlyExpenses) / monthlyIncome) : 0, expense_ratio: monthlyIncome ? monthlyExpenses / monthlyIncome : 0, net_worth: currentSavings + investmentValue + fdValue - totalDebt };
-  const score = { ...MOCK_SCORE, savings_rate: features.savings_rate, expense_ratio: features.expense_ratio, debt_to_income: monthlyIncome ? monthlyEmi / monthlyIncome : 0 };
-  const recs = MOCK_RECOMMENDATIONS.slice(0, 3);
+  const savingsRate = monthlyIncome ? Math.max(0, (monthlyIncome - monthlyExpenses) / monthlyIncome) : 0;
+  const expenseRatio = monthlyIncome ? monthlyExpenses / monthlyIncome : 0;
+  const debtToIncome = monthlyIncome ? monthlyEmi / monthlyIncome : 0;
+  const essentialExpenses = expenses.filter((record) => record.expense_type === 'essential').reduce((sum, record) => sum + toNumber(record.amount), 0);
+  const emergencyFundMonths = essentialExpenses ? sumBy(savings.filter((record) => record.savings_type === 'Emergency Fund'), 'amount') / essentialExpenses : 0;
+  const features = { ...MOCK_FEATURES, monthly_income: monthlyIncome, monthly_expenses: monthlyExpenses, current_savings: currentSavings, total_debt: totalDebt, monthly_emi: monthlyEmi, investment_value: investmentValue, fd_value: fdValue, savings_rate: savingsRate, expense_ratio: expenseRatio, debt_to_income: debtToIncome, emergency_fund_months: emergencyFundMonths, discretionary_expense_ratio: monthlyIncome ? sumBy(expenses.filter((record) => record.expense_type === 'discretionary'), 'amount') / monthlyIncome : 0, net_worth: currentSavings + investmentValue + fdValue - totalDebt };
+  const healthScore = Math.round(Math.max(0, Math.min(100, savingsRate * 50 + (1 - Math.min(expenseRatio, 1)) * 25 + (1 - Math.min(debtToIncome, 1)) * 25)));
+  const healthCategory: HealthCategory = healthScore >= 85 ? 'Excellent' : healthScore >= 70 ? 'Healthy' : healthScore >= 50 ? 'Moderate' : healthScore >= 30 ? 'Weak' : 'Critical';
+  const spendingRisk: RiskLevel = expenseRatio > 0.7 || debtToIncome > 0.5 ? 'High' : expenseRatio > 0.5 ? 'Medium' : 'Low';
+  const score = { health_score: healthScore, health_category: healthCategory, spending_risk: spendingRisk, savings_rate: savingsRate, expense_ratio: expenseRatio, debt_to_income: debtToIncome };
+  const recs: Recommendation[] = [];
 
   return (
     <DashboardLayout>

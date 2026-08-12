@@ -50,6 +50,13 @@ export async function addRecord(table: FinancialTable, payload: Record<string, u
   return data as FinancialRecord
 }
 
+export async function updateRecord(table: FinancialTable, id: string, payload: Record<string, unknown>) {
+  const userId = await getCurrentUserId()
+  const { data, error } = await (supabase.from(table) as any).update(payload).eq('id', id).eq('user_id', userId).select().single()
+  if (error) throw error
+  return data as FinancialRecord
+}
+
 export async function deleteRecord(table: FinancialTable, id: string) {
   const userId = await getCurrentUserId()
   const { error } = await (supabase.from(table) as any).delete().eq('id', id).eq('user_id', userId)
