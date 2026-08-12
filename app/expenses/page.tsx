@@ -48,6 +48,7 @@ export default function ExpensesPage() {
   }
 
   async function removeExpense(id: string) {
+    if (!window.confirm('Delete this expense?')) return;
     try { await deleteRecord('expense_records', id); setExpenses((current) => current.filter((expense) => expense.id !== id)); } catch (err) { setError(formatRecordError(err)); }
   }
 

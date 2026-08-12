@@ -37,8 +37,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthError(error instanceof Error ? error.message : null);
       setAuthState(error || !nextSession ? 'unauthenticated' : 'authenticated');
     };
-    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Authentication is taking too long to initialize.')), 10000));
-    Promise.race([supabase.auth.getSession(), timeout]).then(({ data, error }) => finishAuth(error ? null : data.session, error)).catch((error) => finishAuth(null, error));
+    const timeoutId = window.setTimeout(() => finishAuth(null, new Error('Authentication is taking too long to initialize.')), 5000);
+    supabase.auth.getSession().then(({ data, error }) => {
+      window.clearTimeout(timeoutId);
+      finishAuth(error ? null : data.session, error);
+    }).catch((error) => {
+      window.clearTimeout(timeoutId);
+      finishAuth(null, error);
+    });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!mounted) return;

@@ -47,7 +47,7 @@ export default function DebtsPage() {
   const totalEMI = sumBy(debts, 'monthly_emi');
   const income = 0;
   const debtToIncome = income ? totalEMI / income : 0;
-  async function saveDebt(event: React.FormEvent) { event.preventDefault(); setError(''); const numeric = ['original_principal', 'remaining_balance', 'interest_rate', 'monthly_emi', 'remaining_months'].reduce((acc, key) => ({ ...acc, [key]: Number(form[key as keyof typeof form]) }), {}); if (!form.debt_type || !validateAmount(form.original_principal) || !validateAmount(form.remaining_balance) || !validateRate(form.interest_rate) || !validateAmount(form.monthly_emi) || !validateInteger(form.remaining_months, 0)) { setError('Enter valid non-negative debt values.'); return } try { const record = await addRecord('debts', { ...numeric, debt_type: form.debt_type }); setDebts((current) => [record, ...current]); setForm({ debt_type: 'Home Loan', original_principal: '', remaining_balance: '', interest_rate: '', monthly_emi: '', remaining_months: '' }); } catch (err) { setError(formatRecordError(err)) } }
+  async function saveDebt(event: React.FormEvent) { event.preventDefault(); setError(''); setSaving(true); const numeric = ['original_principal', 'remaining_balance', 'interest_rate', 'monthly_emi', 'remaining_months'].reduce((acc, key) => ({ ...acc, [key]: Number(form[key as keyof typeof form]) }), {}); if (!form.debt_type || !validateAmount(form.original_principal) || !validateAmount(form.remaining_balance) || !validateRate(form.interest_rate) || !validateAmount(form.monthly_emi) || !validateInteger(form.remaining_months, 0)) { setError('Enter valid non-negative debt values.'); return } try { const payload = { ...numeric, debt_type: form.debt_type }; const record = editingId ? await updateRecord('debts', editingId, payload) : await addRecord('debts', payload); setDebts((current) => editingId ? current.map((item) => item.id === editingId ? record : item) : [record, ...current]); setEditingId(null); setForm({ debt_type: 'Home Loan', original_principal: '', remaining_balance: '', interest_rate: '', monthly_emi: '', remaining_months: '' }); } catch (err) { setError(formatRecordError(err)) } }
   async function removeDebt(id: string) { if (!window.confirm('Delete this debt?')) return; try { await deleteRecord('debts', id); setDebts((current) => current.filter((debt) => debt.id !== id)); } catch (err) { setError(formatRecordError(err)) } }
 
   return (
@@ -97,7 +97,7 @@ export default function DebtsPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="debt-type">Loan Type</Label>
-              <Select defaultValue="Home Loan">
+              <Select value={form.debt_type} onValueChange={(value) => setForm({ ...form, debt_type: value })}>
                 <SelectTrigger id="debt-type">
                   <SelectValue />
                 </SelectTrigger>
@@ -169,7 +169,7 @@ export default function DebtsPage() {
                   <TableCell>{toNumber(debt.remaining_months)}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" type="button" onClick={() => void removeDebt(debt.id)} aria-label={`Delete ${String(debt.debt_type)}`}>
-                      <Trash2 className="h-4 w-4 text-danger" />
+                      <Button variant="ghost" size="sm" type="button" onClick={() => { setEditingId(debt.id); setForm({ debt_type: String(debt.debt_type), original_principal: String(toNumber(debt.original_principal)), remaining_balance: String(toNumber(debt.remaining_balance)), interest_rate: String(toNumber(debt.interest_rate)), monthly_emi: String(toNumber(debt.monthly_emi)), remaining_months: String(toNumber(debt.remaining_months)) }); }}>Edit</Button><Trash2 className="h-4 w-4 text-danger" />
                     </Button>
                   </TableCell>
                 </TableRow>
