@@ -24,7 +24,7 @@ import {
 import { MetricCard } from '@/components/metric-card';
 import { Plus, CreditCard, Trash2, AlertCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { addRecord, deleteRecord, formatRecordError, listRecords, sumBy, toNumber, type FinancialRecord } from '@/lib/financial-data';
+import { addRecord, deleteRecord, formatRecordError, listRecords, sumBy, toNumber, updateRecord, validateAmount, validateInteger, validateRate, type FinancialRecord } from '@/lib/financial-data';
 import { formatCurrency, formatPercent } from '@/lib/format';
 
 const debtTypes = [
@@ -40,13 +40,15 @@ export default function DebtsPage() {
   const [debts, setDebts] = useState<FinancialRecord[]>([]);
   const [form, setForm] = useState({ debt_type: 'Home Loan', original_principal: '', remaining_balance: '', interest_rate: '', monthly_emi: '', remaining_months: '' });
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   useEffect(() => { void listRecords('debts').then(setDebts).catch((err) => setError(formatRecordError(err))); }, []);
   const totalDebt = sumBy(debts, 'remaining_balance');
   const totalEMI = sumBy(debts, 'monthly_emi');
   const income = 0;
   const debtToIncome = income ? totalEMI / income : 0;
-  async function saveDebt(event: React.FormEvent) { event.preventDefault(); setError(''); const numeric = ['original_principal', 'remaining_balance', 'interest_rate', 'monthly_emi', 'remaining_months'].reduce((acc, key) => ({ ...acc, [key]: Number(form[key as keyof typeof form]) }), {}); if (!form.debt_type || Object.values(numeric).some((value) => !Number.isFinite(Number(value)) || Number(value) < 0)) { setError('Enter valid non-negative debt values.'); return } try { const record = await addRecord('debts', { ...numeric, debt_type: form.debt_type }); setDebts((current) => [record, ...current]); setForm({ debt_type: 'Home Loan', original_principal: '', remaining_balance: '', interest_rate: '', monthly_emi: '', remaining_months: '' }); } catch (err) { setError(formatRecordError(err)) } }
-  async function removeDebt(id: string) { try { await deleteRecord('debts', id); setDebts((current) => current.filter((debt) => debt.id !== id)); } catch (err) { setError(formatRecordError(err)) } }
+  async function saveDebt(event: React.FormEvent) { event.preventDefault(); setError(''); const numeric = ['original_principal', 'remaining_balance', 'interest_rate', 'monthly_emi', 'remaining_months'].reduce((acc, key) => ({ ...acc, [key]: Number(form[key as keyof typeof form]) }), {}); if (!form.debt_type || !validateAmount(form.original_principal) || !validateAmount(form.remaining_balance) || !validateRate(form.interest_rate) || !validateAmount(form.monthly_emi) || !validateInteger(form.remaining_months, 0)) { setError('Enter valid non-negative debt values.'); return } try { const record = await addRecord('debts', { ...numeric, debt_type: form.debt_type }); setDebts((current) => [record, ...current]); setForm({ debt_type: 'Home Loan', original_principal: '', remaining_balance: '', interest_rate: '', monthly_emi: '', remaining_months: '' }); } catch (err) { setError(formatRecordError(err)) } }
+  async function removeDebt(id: string) { if (!window.confirm('Delete this debt?')) return; try { await deleteRecord('debts', id); setDebts((current) => current.filter((debt) => debt.id !== id)); } catch (err) { setError(formatRecordError(err)) } }
 
   return (
     <DashboardLayout>

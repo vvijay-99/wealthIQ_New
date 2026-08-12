@@ -27,7 +27,25 @@ export function toNumber(value: unknown) {
 
 export function validateAmount(value: string) {
   const amount = Number(value)
-  return Number.isFinite(amount) && amount > 0
+  return value.trim() !== '' && Number.isFinite(amount) && amount >= 0
+}
+
+export function validateDate(value: string) {
+  return Boolean(value) && !Number.isNaN(Date.parse(value))
+}
+
+export function validateDateRange(start: string, end: string) {
+  return validateDate(start) && validateDate(end) && new Date(end).getTime() > new Date(start).getTime()
+}
+
+export function validateRate(value: string) {
+  const rate = Number(value)
+  return value.trim() !== '' && Number.isFinite(rate) && rate >= 0 && rate <= 100
+}
+
+export function validateInteger(value: string, minimum = 0) {
+  const number = Number(value)
+  return value.trim() !== '' && Number.isInteger(number) && number >= minimum
 }
 
 export async function getCurrentUserId() {

@@ -19,6 +19,7 @@ const AuthContext = createContext<AuthContextValue>({
   session: null,
   user: null,
   authState: 'loading',
+  authError: null,
   signOut: async () => {},
   refreshSession: async () => {},
 });
