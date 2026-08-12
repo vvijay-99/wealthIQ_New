@@ -10,6 +10,16 @@ export type FinancialTable =
   | 'investments'
   | 'fixed_deposits'
 
+export type ProfileRecord = FinancialRecord & {
+  full_name?: string | null
+  age?: number | null
+  country?: string | null
+  employment_type?: string | null
+  income_stability?: string | null
+  financial_goal?: string | null
+  risk_tolerance?: string | null
+}
+
 export function toNumber(value: unknown) {
   const parsed = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(parsed) ? parsed : 0
@@ -44,6 +54,20 @@ export async function deleteRecord(table: FinancialTable, id: string) {
   const userId = await getCurrentUserId()
   const { error } = await (supabase.from(table) as any).delete().eq('id', id).eq('user_id', userId)
   if (error) throw error
+}
+
+export async function getProfile() {
+  const userId = await getCurrentUserId()
+  const { data, error } = await (supabase.from('profiles') as any).select('*').eq('user_id', userId).maybeSingle()
+  if (error) throw error
+  return (data ?? null) as ProfileRecord | null
+}
+
+export async function saveProfile(payload: Record<string, unknown>) {
+  const userId = await getCurrentUserId()
+  const { data, error } = await (supabase.from('profiles') as any).upsert({ ...payload, user_id: userId }, { onConflict: 'user_id' }).select().single()
+  if (error) throw error
+  return data as ProfileRecord
 }
 
 export function sumBy(records: FinancialRecord[], key: string) {

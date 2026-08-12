@@ -87,7 +87,7 @@ export default function DashboardPage() {
           <MetricCard
             title="Health Category"
             value={score.health_category}
-            subtitle="ML Classification"
+            subtitle="Deterministic summary"
             icon={<Sparkles className="h-4 w-4" />}
             accent="primary"
           />
@@ -99,7 +99,7 @@ export default function DashboardPage() {
               <RiskBadge level={score.spending_risk} size="lg" />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              ML-based classification
+              Based on your saved financial records
             </p>
           </div>
           <MetricCard
@@ -276,12 +276,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Mock data notice */}
       <div className="mt-6 rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center">
         <p className="text-xs text-muted-foreground">
-          Phase 1: Displaying clearly marked mock UI data. Financial calculations,
-          ML predictions, and recommendations will be connected to the FastAPI
-          backend in later phases.
+          Dashboard metrics are calculated from your saved Supabase financial records. Forecasts and recommendations remain informational until their dedicated data sources are connected.
         </p>
       </div>
     </DashboardLayout>
