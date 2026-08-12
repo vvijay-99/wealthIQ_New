@@ -27,47 +27,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>('loading');
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthState(session ? 'authenticated' : 'unauthenticated');
+    let mounted = true;
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!mounted) return;
+      setSession(error ? null : data.session);
+      setAuthState(error || !data.session ? 'unauthenticated' : 'authenticated');
     });
 
-    // Listen for auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        setSession(session);
-        setAuthState(session ? 'authenticated' : 'unauthenticated');
-      })();
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted) return;
+      setSession(nextSession);
+      setAuthState(nextSession ? 'authenticated' : 'unauthenticated');
     });
 
     return () => {
+      mounted = false;
       listener.subscription.unsubscribe();
     };
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
     setSession(null);
     setAuthState('unauthenticated');
   }, []);
 
   const refreshSession = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    setSession(data.session);
-    setAuthState(data.session ? 'authenticated' : 'unauthenticated');
+    const { data, error } = await supabase.auth.getSession();
+    setSession(error ? null : data.session);
+    setAuthState(error || !data.session ? 'unauthenticated' : 'authenticated');
   }, []);
 
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        user: session?.user ?? null,
-        authState,
-        signOut,
-        refreshSession,
-      }}
-    >
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, authState, signOut, refreshSession }}>
       {children}
     </AuthContext.Provider>
   );
