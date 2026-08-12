@@ -32,10 +32,29 @@ import {
 } from '@/lib/mock-data';
 import { formatCurrency, formatPercent, formatNumber } from '@/lib/format';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { listRecords, sumBy, toNumber, type FinancialRecord } from '@/lib/financial-data';
 
 export default function DashboardPage() {
-  const score = MOCK_SCORE;
-  const features = MOCK_FEATURES;
+  const [records, setRecords] = useState<Record<string, FinancialRecord[]>>({});
+  useEffect(() => {
+    void Promise.all(['income_records', 'expense_records', 'savings_records', 'debts', 'investments', 'fixed_deposits'].map(async (table) => [table, await listRecords(table as never)] as const)).then((entries) => setRecords(Object.fromEntries(entries))).catch(() => undefined);
+  }, []);
+  const incomes = records.income_records ?? [];
+  const expenses = records.expense_records ?? [];
+  const savings = records.savings_records ?? [];
+  const debts = records.debts ?? [];
+  const investments = records.investments ?? [];
+  const deposits = records.fixed_deposits ?? [];
+  const monthlyIncome = sumBy(incomes, 'amount');
+  const monthlyExpenses = sumBy(expenses, 'amount');
+  const currentSavings = sumBy(savings, 'amount');
+  const totalDebt = sumBy(debts, 'remaining_balance');
+  const monthlyEmi = sumBy(debts, 'monthly_emi');
+  const investmentValue = sumBy(investments, 'current_value');
+  const fdValue = sumBy(deposits, 'principal');
+  const features = { ...MOCK_FEATURES, monthly_income: monthlyIncome, monthly_expenses: monthlyExpenses, current_savings: currentSavings, total_debt: totalDebt, monthly_emi: monthlyEmi, investment_value: investmentValue, fd_value: fdValue, savings_rate: monthlyIncome ? Math.max(0, (monthlyIncome - monthlyExpenses) / monthlyIncome) : 0, expense_ratio: monthlyIncome ? monthlyExpenses / monthlyIncome : 0, net_worth: currentSavings + investmentValue + fdValue - totalDebt };
+  const score = { ...MOCK_SCORE, savings_rate: features.savings_rate, expense_ratio: features.expense_ratio, debt_to_income: monthlyIncome ? monthlyEmi / monthlyIncome : 0 };
   const recs = MOCK_RECOMMENDATIONS.slice(0, 3);
 
   return (

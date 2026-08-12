@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/client'
 
 export type FinancialRecord = Record<string, unknown> & { id: string; user_id: string; created_at?: string }
 
@@ -21,32 +21,28 @@ export function validateAmount(value: string) {
 }
 
 export async function getCurrentUserId() {
-  const supabase = createClient()
   const { data, error } = await supabase.auth.getUser()
   if (error || !data.user) throw new Error('Please sign in to manage your finances.')
   return data.user.id
 }
 
 export async function listRecords(table: FinancialTable) {
-  const supabase = createClient()
   const userId = await getCurrentUserId()
-  const { data, error } = await supabase.from(table).select('*').eq('user_id', userId).order('created_at', { ascending: false })
+  const { data, error } = await (supabase.from(table) as any).select('*').eq('user_id', userId).order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []) as FinancialRecord[]
 }
 
 export async function addRecord(table: FinancialTable, payload: Record<string, unknown>) {
-  const supabase = createClient()
   const userId = await getCurrentUserId()
-  const { data, error } = await supabase.from(table).insert({ ...payload, user_id: userId }).select().single()
+  const { data, error } = await (supabase.from(table) as any).insert({ ...payload, user_id: userId }).select().single()
   if (error) throw error
   return data as FinancialRecord
 }
 
 export async function deleteRecord(table: FinancialTable, id: string) {
-  const supabase = createClient()
   const userId = await getCurrentUserId()
-  const { error } = await supabase.from(table).delete().eq('id', id).eq('user_id', userId)
+  const { error } = await (supabase.from(table) as any).delete().eq('id', id).eq('user_id', userId)
   if (error) throw error
 }
 
