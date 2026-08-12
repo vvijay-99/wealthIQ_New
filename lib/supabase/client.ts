@@ -20,6 +20,11 @@ export const supabase = createBrowserClient<Database>(supabaseUrl, supabaseAnonK
   },
 });
 
+// Compatibility export for stale development bundles and existing callers.
+export function createClient() {
+  return supabase;
+}
+
 export function getAuthRedirectUrl() {
   return (
     process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
