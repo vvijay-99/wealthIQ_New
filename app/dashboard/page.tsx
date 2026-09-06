@@ -1,6 +1,7 @@
 'use client';
 
 import { DashboardLayout } from '@/components/dashboard-layout';
+import { ProtectedRoute } from '@/components/protected-route';
 import { PageHeader } from '@/components/page-header';
 import { MetricCard } from '@/components/metric-card';
 import { HealthScoreCard } from '@/components/health-score-card';
@@ -39,7 +40,8 @@ export default function DashboardPage() {
   const recs = MOCK_RECOMMENDATIONS.slice(0, 3);
 
   return (
-    <DashboardLayout>
+    <ProtectedRoute>
+      <DashboardLayout>
       <PageHeader
         title="Dashboard"
         description="Your financial health at a glance."
@@ -265,7 +267,8 @@ export default function DashboardPage() {
           backend in later phases.
         </p>
       </div>
-    </DashboardLayout>
+      </DashboardLayout>
+    </ProtectedRoute>
   );
 }
 
